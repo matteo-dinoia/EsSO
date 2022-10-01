@@ -1,6 +1,6 @@
 //IGNORE FILE WITHOUT "."
 **/*
-!*.*
+!*[./]*
 
 .vscode
 *.out
