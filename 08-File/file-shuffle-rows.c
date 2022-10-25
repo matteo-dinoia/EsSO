@@ -76,7 +76,7 @@ int main(int argc, char * argv[]){
 	srand(time(0));
 	for(;c>=1;c--){
 		/*chose random element*/
-		int random=(double)rand()/(RAND_MAX)*(c+1);
+		int random=(double)rand()/(RAND_MAX)*c;
 		for(int i=0; i<random; i++){
 			beforeEl=el;
 			el=el->next;
