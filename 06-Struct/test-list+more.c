@@ -65,6 +65,14 @@ int main()
 	head = list_insert_ordered(head, 2);
 	head = list_insert_ordered(head, 15);
 	head = list_insert_ordered(head, 10);
+	head = list_insert_ordered(head, 10);
+	head = list_insert_ordered(head, 21);
+	head = list_insert_ordered(head, 1);
+	head = list_insert_ordered(head, -2);
+	head = list_insert_ordered(head, 12);
+	head = list_insert_ordered(head, 14);
+	head = list_insert_ordered(head, 5);
+	head = list_insert_ordered(head, 6);
 
 	head2 = list_insert_ordered(head2, 7);
 	head2 = list_insert_ordered(head2, 4);
@@ -167,18 +175,10 @@ list list_insert_ordered(list p, int val){
 
 		first->value = val;
 		first->next = p;
+
 		return first;
 	}
-	else if(p->next==NULL || val < p->next->value){ /*IN MIDDLE*/
-		list middle;
-		middle = malloc(sizeof(*middle));
-		middle->value = val;
-
-		middle->next = p->next;
-		p->next = middle;
-	}
-	else /*NOT FOUND PLACE*/
-		list_insert_ordered(p->next, val);
+	p->next=list_insert_ordered(p->next, val);
 	return p;
 }
 
