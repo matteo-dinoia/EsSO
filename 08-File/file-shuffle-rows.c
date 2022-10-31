@@ -34,7 +34,7 @@ int main(int argc, char * argv[]){
 	/*Initializing*/
 	node *list=malloc(sizeof(*list)), *el;
 	el=list;
-	strNode * elStr=malloc(sizeof(elStr));
+	strNode * elStr=malloc(sizeof(*elStr));
 	el->dynStr=elStr;
 	elStr->character='\0';
 
@@ -49,7 +49,7 @@ int main(int argc, char * argv[]){
 			el=el->next;
 			c++;
 			//new char
-			elStr=malloc(sizeof(elStr));
+			elStr=malloc(sizeof(*elStr));
 			el->dynStr=elStr;
 			elStr->character='\0';
 		}
