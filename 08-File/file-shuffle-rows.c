@@ -21,10 +21,14 @@ void list_print_str(strNode *, FILE *);
 
 
 int main(int argc, char * argv[]){
-	/*OPENING FILE*/
-	FILE *input=fopen(argv[1], "r");
-	FILE *output=fopen(argv[2], "w");
+	/*CHECK*/
+	if (argc < 3){
+		printf("Error: Not enought arguments");
+		return 1;
+	}
 
+	/*OPENING FILE*/
+	FILE *input=fopen(argv[1], "r"), *output=fopen(argv[2], "w");
 	if(input==NULL || output==NULL){
 		printf("Error in opening files");
 		return 1;
@@ -32,11 +36,11 @@ int main(int argc, char * argv[]){
 
 
 	/*Initializing*/
-	node *list=malloc(sizeof(*list)), *el;
-	el=list;
-	strNode * elStr=malloc(sizeof(*elStr));
-	el->dynStr=elStr;
-	elStr->character='\0';
+	srand(time(0));
+	node *list=malloc(sizeof(*list)), *el=list;
+	strNode *elStr=malloc(sizeof(*elStr));
+	el->dynStr = elStr;
+	elStr->character = '\0';
 
 	//Reading list
 	int c=1;
@@ -66,14 +70,12 @@ int main(int argc, char * argv[]){
 		res=fgetc(input);
 	}
 
-
 	/*Make list circular*/
 	el->next=list;
 
 	/*print in random ->by freeing*/
 	node *beforeEl=el;
 	el=list;
-	srand(time(0));
 	for(;c>=1;c--){
 		/*chose random element*/
 		int random=(double)rand()/(RAND_MAX)*c;
@@ -81,8 +83,10 @@ int main(int argc, char * argv[]){
 			beforeEl=el;
 			el=el->next;
 		}
+
 		/*print string*/
 		list_print_str(el->dynStr, output);
+		if(c>1) putc('\n', output);
 
 		/*free element*/
 		beforeEl->next=el->next;
@@ -96,8 +100,7 @@ int main(int argc, char * argv[]){
 	fflush(NULL);
 	fclose(input);
 	fclose(output);
-
-
+	return 0;
 }
 
 void list_free(node *el){
@@ -128,6 +131,7 @@ void list_print(node *el, FILE *out){
 	strNode *elStr;
 	while(el!=NULL){
 		list_print_str(el->dynStr, out);
+		putc('\n', out);
 		el=el->next;
 	}
 }
@@ -137,5 +141,4 @@ void list_print_str(strNode *elStr, FILE *out){
 		putc(elStr->character, out);
 		elStr=elStr->next;
 	}
-	putc('\n', out);
 }
