@@ -62,16 +62,20 @@ int main(int argc, char **argv)
 		else if(pid==0) break;
 		else child[i] = pid;
 	}
+
+	/*SYNCRONIZATION*/
 	if(getpid()==ppid){
 		enabled_signal=1;
 		for(int i=0; i<child_num; i++)
-			kill(child[i], SIGUSR1);
+			kill(child[i], SIGCONT);
 		dprintf(1, "INFO: signal enabled\n");
 	}
+	else raise(SIGSTOP);
+
 	/*LOOPS*/
 	for (int i = 0; ; i = (i + 1) % module){
-		if(getpid()!=ppid && i==0 && getppid()==ppid && enabled_signal){ /*son to send to parent (still alive)*/
-			kill(getppid(), SIGUSR1);
+		if(getpid()!=ppid && i==0 && getppid()==ppid /*&& enabled_signal*/){ /*son to send to parent (still alive)*/
+			kill(getppid(),  SIGUSR1);
 			//dprintf(1,"CALL PARENT: PID=%d\n", getpid());
 		}
 	}
@@ -84,11 +88,11 @@ void handler_custom(int signum)
 {
 
 	if (signum == SIGUSR1){
-		/*ONLYS SON*/
+		/*ONLYS SON
 		if(ppid!=getpid()){
 			enabled_signal=1;
 			return;
-		}
+		}*/
 
 		/*ONLY PARENT*/
 		/*RANDOM NUMBER */
