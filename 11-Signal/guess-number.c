@@ -10,14 +10,14 @@ void handler(int);
 int main(int argc, char **argv){
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
 	if(argc<3){
-		printf("ERROR: not enougth parameters");
+		printf("ERROR: not enougth parameters\n");
 		return 1;
 	}
 	srand(time(0));
 	int max_number=atoi(argv[1]);
 	int time=atoi(argv[2]);
 	if(time<=0 || max_number<=0){
-		printf("ERROR: negative or null parameter/s");
+		printf("ERROR: negative or null parameter/s\n");
 		return 1;
 	}
 

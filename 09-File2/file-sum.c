@@ -1,10 +1,13 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+
+#ifndef SIZE_BUF
+#define SIZE_BUF 4096
+#endif
 
 int main(int argc, char * argv[]){
 
@@ -27,7 +30,7 @@ int main(int argc, char * argv[]){
 	}
 
 	/*READ FILE*/
-	unsigned char buf[100];
+	unsigned char buf[SIZE_BUF];
 	int nRead;
 	int res=0;
 	do{
