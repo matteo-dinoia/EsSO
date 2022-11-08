@@ -1,5 +1,4 @@
 #define _GNU_SOURCE
-
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,24 +8,28 @@
 #include <string.h>
 #include <limits.h>
 
+#define true 1
+#define false 0
+
 /*PROTOTYPE*/
 void handler_custom(int);
+void exit_everything(const char *);
 
 /*GLOBAL*/
-int child_num, *child, child_alive;
-int enabled_signal=0;
-int ppid;
+int child_num, child_alive=0;
+int *child;
+int ppid, c;
+int stop=true;
 
 int main(int argc, char **argv)
 {
-
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
 	if(argc<3){
 		dprintf(1, "ERROR: not enougth parameters\n");
 		return 1;
 	}
 	srand(time(0));
-	child_alive=child_num = atoi(argv[1]);
+	child_num = atoi(argv[1]);
 	int module=atoi(argv[2]);
 	if(child_num<=0 || module<=0){
 		dprintf(1, "ERROR: negative or null parameter/s\n");
@@ -35,50 +38,50 @@ int main(int argc, char **argv)
 
 	/*GLOBAL VARIABLE*/
 	ppid = getpid();
-	int child_pid[child_num];
-	bzero(child_pid, sizeof(*child_pid) * child_num);
-	child = child_pid;
+	child=calloc(child_num, sizeof(*child));
+
+	/*MASK FOR HANDLER*/
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGSTOP);
+	sigaddset(&set, SIGUSR1);
+	sigaddset(&set, SIGUSR2);
 
 	/*SET HANDLER*/
 	struct sigaction sighandler;
 	bzero(&sighandler, sizeof(sighandler));
 	sighandler.sa_handler = &handler_custom;
+	sighandler.sa_mask=set;
 	sigaction(SIGUSR1, &sighandler, NULL);
+	sigaction(SIGUSR2, &sighandler, NULL);
 
 	/*FORK*/
 	int pid;
-	for (int i = 0; i < child_num; i++)
-	{
-		dprintf(1, "INFO: forking %d-child\n", i);
-		pid = fork();
-
-		if(pid<0){
-			dprintf(1, "ERROR: creating child\n");
-			for (int i2 = 0; i2 < i; i2++)
-				kill(child[i2], SIGTERM);
-			while(wait(NULL)!=-1){};
-			exit(1);
+	for (int i = 0; i < child_num; i++){
+		if((pid = fork())==-1) exit_everything("ERROR: creating child");  /*error*/
+		else if(pid==0) break;  /*son*/
+		else{/*father*/
+			child[child_alive++] = pid;
+			dprintf(1, "INFO: forked %d-child (PID=%d)\n", child_alive+1, pid);
 		}
-		else if(pid==0) break;
-		else child[i] = pid;
 	}
 
 	/*SYNCRONIZATION*/
 	if(getpid()==ppid){
-		enabled_signal=1;
+		dprintf(1, "INFO: starting son wakeup\n");
 		for(int i=0; i<child_num; i++)
-			kill(child[i], SIGCONT);
-		dprintf(1, "INFO: signal enabled\n");
+			kill(child[i], SIGUSR2);
+		dprintf(1, "INFO: finished son wakeup\n");
 	}
-	else raise(SIGSTOP);
+	else{
+		while(stop) pause();
+	}
+
 
 	/*LOOPS*/
-	for (int i = 0; ; i = (i + 1) % module){
-		if(getpid()!=ppid && i==0 && getppid()==ppid /*&& enabled_signal*/){ /*son to send to parent (still alive)*/
+	for (c = 0; ; c = (c + 1) % module)
+		if(getpid()!=ppid && c==0 && getppid()==ppid) /*son to send to parent (still alive)*/
 			kill(getppid(),  SIGUSR1);
-			//dprintf(1,"CALL PARENT: PID=%d\n", getpid());
-		}
-	}
 
 	return 2;
 }
@@ -86,30 +89,39 @@ int main(int argc, char **argv)
 /*HANDLER*/
 void handler_custom(int signum)
 {
+	//dprintf(1, "Received signal %d\n", signum);
+	if (signum == SIGUSR1 && getpid()==ppid){ /*FATHER RECEIVE SIGNAL*/
+		/*CHECK IF c==0*/
+		if(c!=0) return;
 
-	if (signum == SIGUSR1){
-		/*ONLYS SON
-		if(ppid!=getpid()){
-			enabled_signal=1;
-			return;
-		}*/
+		/*DECIDE WHICH TO KILL*/
+		int to_kill=rand()%child_alive;
+		int pid_to_kill=child[to_kill];
 
-		/*ONLY PARENT*/
-		/*RANDOM NUMBER */
-		int rng, i;
-		while (child[rng = rand() % child_num] == 0); /*random not yet used*/
+		/*REORGANIZE DATA STRUCTURE*/
+		child[to_kill]=child[--child_alive]; /*put last in place of killed*/
 
-		/*KILL*/
-		dprintf(1, "KILL (alive %d /%d): n=%d PID=%d\n", child_alive, child_num, rng, child[rng]);
-		kill(child[rng], SIGTERM);
-		child[rng] = 0;
+		/*KILL CHILD*/
+		dprintf(1, "KILL (alive %d /%d): n=%d PID=%d\n", child_alive, child_num, to_kill, pid_to_kill);
+		kill(pid_to_kill, SIGKILL);
+		waitpid(pid_to_kill, NULL, 0);
+		dprintf(1, "\tFinished waiting\n");
 
 		/*CHECK FOR CLOSING CONDITION*/
-		child_alive--;
-		if(child_alive<=0){
-			dprintf(1, "Finished\n");
-			while(wait(NULL)!=-1){};
-			exit(0);
-		}
+		if(child_alive<=0) exit_everything("FINISHED");
 	}
+	else if(signum == SIGUSR2 && getpid()!=ppid){ /*CHILD CONT*/
+		dprintf(1, "Wake UP PID=%d\n", getpid());
+		stop=false;
+	}
+}
+
+void exit_everything(const char * exit_msg)
+{
+	dprintf(1, "%s\n", exit_msg);
+
+	for (int i = 0; i < child_alive; i++)
+		kill(child[i], SIGTERM);
+	while(wait(NULL)!=-1);
+	exit(1);
 }
