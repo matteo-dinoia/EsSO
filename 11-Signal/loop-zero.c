@@ -92,7 +92,7 @@ void handler_custom(int signum)
 	//dprintf(1, "Received signal %d\n", signum);
 	if (signum == SIGUSR1 && getpid()==ppid){ /*FATHER RECEIVE SIGNAL*/
 		/*CHECK IF c==0*/
-		if(c!=0) return;
+		//if(c!=0) return;
 
 		/*DECIDE WHICH TO KILL*/
 		int to_kill=rand()%child_alive;
