@@ -34,6 +34,7 @@ int main(int argc, char **argv){
 	child=calloc(num_child, sizeof(*child));
 	for(int i=0; i<num_child; i++){
 		if((pid=fork())==0){/*CHILD*/
+			free(child);
 			char *const argv[]={"char-loop", "Hello", NULL};
 			char *const env[]={NULL};
 			execve("char-loop", argv, env);

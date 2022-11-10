@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <limits.h>
 
 #define PANIC(string) exit((dprintf(1, "FATAL: %s\n", (string)), 1))
 #define READ 0
@@ -17,45 +18,57 @@ int main(int argc, char **argv){
 		PANIC("not enougth parameters\n");
 	int num_child=atoi(argv[1]);
 	int initial_value=atoi(argv[2]);
-	if(num_child<=0 || initial_value<=0 )
-		PANIC("negative or null parameter/s\n");
+	if(num_child<=1 || initial_value<=0 )
+		PANIC("negative or null parameter/s (also num_child must be greater than 1)\n");
+
 
 	/*CREATE CHILD*/
 	int pid, initialFd[2], oldFd[2], fd[2];
 	int p_write=-1, p_read=-1;
 	for(int i=0; i<num_child; i++){
-		if(i==0){ //FIST
+		/*MEMORY MANAGMENT*/
+		if(i==0){ /*first*/
 			if(pipe(initialFd)==-1) PANIC("failed pipe\n");
+			if(pipe(fd)==-1) PANIC("failed pipe\n");
 			p_write=initialFd[WRITE];
 			p_read=initialFd[READ];
 			memcpy(oldFd, initialFd, 2*sizeof(int));
-			if(pipe(fd)==-1) PANIC("failed pipe\n");
 		}
-		else if(i==num_child-1){ //LAST
+		else if(i==num_child-1){ /*last*/
 			memcpy(oldFd, fd, 2*sizeof(int));
 			memcpy(fd, initialFd, 2*sizeof(int));
 		}
-		else{ //MIDDLE
+		else{ /*middle*/
 			memcpy(oldFd, fd, 2*sizeof(int));
 			if(pipe(fd)==-1) PANIC("failed pipe\n");
 		}
 
-		if((pid=fork())==0){/*CHILD*/
-			close(oldFd[WRITE]);//close write old
-			close(fd[READ]);//clode read old
+		/*FORK*/
+		if((pid=fork())==0){/*child*/
+			/*close unwanted*/
+			close(oldFd[WRITE]);
+			close(fd[READ]);
+
+			if(fd[WRITE]!=initialFd[WRITE])
+				close(initialFd[WRITE]);
+			if(oldFd[READ]!=initialFd[READ])
+				close(initialFd[READ]);
+
 			p_write = fd[WRITE];
 			p_read= oldFd[READ];
 			break;
 		}
-		else if(pid==-1)
+		else if(pid==-1) /*error*/
 			PANIC("during forking child\n");
-		else{
+		else{/*father*/
 			if(i!=0){
 				close(oldFd[READ]);
 				close(oldFd[WRITE]);
 			}
 		}
 	}
+
+
 
 	if(pid==0){ //SON
 		int buf;
@@ -84,11 +97,8 @@ int main(int argc, char **argv){
 		close(p_read);
 		close(p_write);
 
-
 		while((pid=wait(NULL))!=-1|| errno==EINTR){
-			if(errno!=EINTR){
-				dprintf(1, "\tDEAD (child pid=%d)\n", pid);
-			}
+			if(errno!=EINTR) dprintf(1, "\tDEAD (child pid=%d)\n", pid);
 		}
 	}
 

@@ -74,6 +74,7 @@ int main(int argc, char **argv)
 		dprintf(1, "INFO: finished son wakeup\n");
 	}
 	else{
+		free(child);
 		while(stop) pause();
 	}
 
@@ -123,5 +124,7 @@ void exit_everything(const char * exit_msg)
 	for (int i = 0; i < child_alive; i++)
 		kill(child[i], SIGTERM);
 	while(wait(NULL)!=-1);
+
+	free(child);
 	exit(1);
 }
