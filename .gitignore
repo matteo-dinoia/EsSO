@@ -8,3 +8,6 @@
 
 .vscode
 *.out
+#compilation file
+*.a
+*.o
