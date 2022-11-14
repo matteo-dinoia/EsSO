@@ -24,8 +24,8 @@ int main(int argc, char **argv){
 
 	/*CREATE CHILD*/
 	int pid, initialFd[2], oldFd[2], fd[2];
-	int p_write=-1, p_read=-1;
-	for(int i=0; i<num_child; i++){
+	int p_write=-1, p_read=-1, i;
+	for(i=0; i<num_child; i++){
 		/*MEMORY MANAGMENT*/
 		if(i==0){ /*first*/
 			if(pipe(initialFd)==-1) PANIC("failed pipe\n");
