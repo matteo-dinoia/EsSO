@@ -14,17 +14,19 @@
 
 int main(int argc, char **argv){
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
+	int num_child, initial_value;
+	int pid, initialFd[2], oldFd[2], fd[2];
+	int p_write=-1, p_read=-1, i;
+
 	if(argc<3)
 		PANIC("not enougth parameters\n");
-	int num_child=atoi(argv[1]);
-	int initial_value=atoi(argv[2]);
+	num_child=atoi(argv[1]);
+	initial_value=atoi(argv[2]);
 	if(num_child<=1 || initial_value<=0 )
 		PANIC("negative or null parameter/s (also num_child must be greater than 1)\n");
 
 
 	/*CREATE CHILD*/
-	int pid, initialFd[2], oldFd[2], fd[2];
-	int p_write=-1, p_read=-1, i;
 	for(i=0; i<num_child; i++){
 		/*MEMORY MANAGMENT*/
 		if(i==0){ /*first*/
@@ -70,7 +72,7 @@ int main(int argc, char **argv){
 
 
 
-	if(pid==0){ //SON
+	if(pid==0){ /*SON*/
 		int buf;
 		while(1){
 			read(p_read, &buf, sizeof(int));
@@ -88,12 +90,12 @@ int main(int argc, char **argv){
 			dprintf(1, "WRITE %d (child pid=%d)\n", buf, getpid());
 		}
 	}
-	else{ //FATHER
-		//WRITE
+	else{ /*FATHER*/
+		/*WRITE*/
 		write(p_write, &initial_value, sizeof(int));
 		dprintf(1, "WROTE %d (father)\n", initial_value);
 
-		//CLOSE
+		/*CLOSE*/
 		close(p_read);
 		close(p_write);
 
