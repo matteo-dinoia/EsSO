@@ -1,5 +1,4 @@
 #define _GNU_SOURCE
-
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +7,9 @@
 #include <wait.h>
 #include <string.h>
 #include <limits.h>
+
+#define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
+#define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 
 /*PROTOTYPE*/
 void handler_custom(int);
@@ -19,41 +21,48 @@ long num_to_kill = 0; /*Right to edit only to handler*/
 
 int main(int argc, char **argv)
 {
+	/*DECLARATION*/
+	int child_num, module, i, pid, i2;
+	int *child_pid;
+	struct sigaction sighandler;
 
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
-	if(argc<3){
-		dprintf(1, "ERROR: not enougth parameters\n");
-		return 1;
-	}
+	if(argc<3)
+		PANIC("not enougth parameters");
 	srand(time(0));
-	int child_num = atoi(argv[1]);
-	int module=atoi(argv[2]);
-	if(child_num<=0 || module<=0){
-		dprintf(1,"ERROR: negative or null parameter/s\n");
-		return 1;
-	}
+	child_num = atoi(argv[1]);
+	child_pid=calloc(child_num, sizeof(*child_pid));
+	module=atoi(argv[2]);
+	if(child_num<=0 || module<=0)
+		PANIC("negative or null parameter/s");
 
 	/*SET HANDLER*/
-	struct sigaction sighandler;
 	bzero(&sighandler, sizeof(sighandler));
 	sighandler.sa_handler = &handler_custom;
 	sigaction(SIGUSR1, &sighandler, NULL);
 
 	/*FORK*/
-	int pid, child_pid[child_num];
-	for (int i = 0; i < child_num; i++){
+	for (i = 0; i < child_num; i++){
 		pid = fork();
-		dprintf(1,"INFO: forking %d-child\n", i);
+
 
 		if(pid<0){
 			dprintf(1,"ERROR: creating child\n");
-			for (int i2 = 0; i2 < i; i2++)
+			for (i2 = 0; i2 < i; i2++)
 				kill(child_pid[i2], SIGTERM);
 			while(wait(NULL)!=-1){};
+
+			free(child_pid);
 			return 1;
 		}
-		else if(pid==0) break;
-		else child_pid[i] = pid;
+		else if(pid==0){ /*SON*/
+			free(child_pid);
+			break;
+		}
+		else{/*FATHER*/
+			dprintf(1,"INFO: forked %d-child\n", (i+1));
+			child_pid[i] = pid;
+		}
 	}
 
 	/*LOOPS*/
@@ -65,18 +74,17 @@ int main(int argc, char **argv)
 /*LOOPS*/
 void child_loop(int module)
 {
-	for (int i = 0; ; i = (i + 1) % module){
-		if(i==0){
-			kill(getppid(), SIGUSR1);
-			//sleep(1);        //-> for more efficency
-			//dprintf(1,"CALL PARENT: PID=%d\n", getpid());
-		}
-	}
+	int i;
+	for (i = 0; ; i = (i + 1) % module)
+		if(i==0) kill(getppid(), SIGUSR1);
 }
 void parent_loop(int module, int *child_pid, int child_num)
 {
-	int child_alive = child_num, rng;
-	for (int i = 0;; i = (i + 1) % module){
+	/*DECLARATION*/
+	int child_alive, rng, i;
+
+	child_alive=child_num;
+	for (i = 0;; i = (i + 1) % module){
 
 		/*IF THERE IS NEED TO KILL*/
 		while(child_num-child_alive < num_to_kill){
@@ -93,6 +101,8 @@ void parent_loop(int module, int *child_pid, int child_num)
 			if(child_alive<=0){
 				dprintf(1,"Finished\n");
 				while(wait(NULL)!=-1){};
+
+				free(child_pid);
 				exit(0);
 			}
 
@@ -103,8 +113,6 @@ void parent_loop(int module, int *child_pid, int child_num)
 /*HANDLER*/
 void handler_custom(int signum)
 {
-	if(signum==SIGUSR1){
-		if(num_to_kill<LONG_MAX)
-			num_to_kill++;
-	}
+	if(signum==SIGUSR1 && num_to_kill<LONG_MAX)
+		num_to_kill++;
 }

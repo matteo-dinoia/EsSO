@@ -10,6 +10,8 @@
 
 #define true 1
 #define false 0
+#define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
+#define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 
 /*PROTOTYPE*/
 void handler_custom(int);
@@ -23,32 +25,31 @@ int stop=true;
 
 int main(int argc, char **argv)
 {
+	/*DECLARATION*/
+	int module, pid, i;
+	struct sigaction sighandler;
+	sigset_t set;
+
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
-	if(argc<3){
-		dprintf(1, "ERROR: not enougth parameters\n");
-		return 1;
-	}
+	if(argc<3)
+		PANIC("not enougth parameters");
 	srand(time(0));
 	child_num = atoi(argv[1]);
-	int module=atoi(argv[2]);
-	if(child_num<=0 || module<=0){
-		dprintf(1, "ERROR: negative or null parameter/s\n");
-		return 1;
-	}
+	module=atoi(argv[2]);
+	if(child_num<=0 || module<=0)
+		PANIC("negative or null parameter/s");
 
 	/*GLOBAL VARIABLE*/
 	ppid = getpid();
 	child=calloc(child_num, sizeof(*child));
 
 	/*MASK FOR HANDLER*/
-	sigset_t set;
 	sigemptyset(&set);
 	sigaddset(&set, SIGSTOP);
 	sigaddset(&set, SIGUSR1);
 	sigaddset(&set, SIGUSR2);
 
 	/*SET HANDLER*/
-	struct sigaction sighandler;
 	bzero(&sighandler, sizeof(sighandler));
 	sighandler.sa_handler = &handler_custom;
 	sighandler.sa_mask=set;
@@ -56,20 +57,19 @@ int main(int argc, char **argv)
 	sigaction(SIGUSR2, &sighandler, NULL);
 
 	/*FORK*/
-	int pid;
-	for (int i = 0; i < child_num; i++){
+	for (i = 0; i < child_num; i++){
 		if((pid = fork())==-1) exit_everything("ERROR: creating child");  /*error*/
 		else if(pid==0) break;  /*son*/
 		else{/*father*/
 			child[child_alive++] = pid;
-			dprintf(1, "INFO: forked %d-child (PID=%d)\n", child_alive+1, pid);
+			dprintf(1, "INFO: forked %d-child (PID=%d)\n", child_alive, pid);
 		}
 	}
 
 	/*SYNCRONIZATION*/
 	if(getpid()==ppid){
 		dprintf(1, "INFO: starting son wakeup\n");
-		for(int i=0; i<child_num; i++)
+		for(i=0; i<child_num; i++)
 			kill(child[i], SIGUSR2);
 		dprintf(1, "INFO: finished son wakeup\n");
 	}
@@ -90,17 +90,17 @@ int main(int argc, char **argv)
 /*HANDLER*/
 void handler_custom(int signum)
 {
-	//dprintf(1, "Received signal %d\n", signum);
+	int to_kill, pid_to_kill;
 	if (signum == SIGUSR1 && getpid()==ppid){ /*FATHER RECEIVE SIGNAL*/
-		/*CHECK IF c==0*/
-		//if(c!=0) return;
+		/*ALSO FATHER NEED TO BE 0*/
+		if(c!=0) return;
 
 		/*DECIDE WHICH TO KILL*/
-		int to_kill=rand()%child_alive;
-		int pid_to_kill=child[to_kill];
+		to_kill=rand()%child_alive;
+		pid_to_kill=child[to_kill];
 
 		/*REORGANIZE DATA STRUCTURE*/
-		child[to_kill]=child[--child_alive]; /*put last in place of killed*/
+		child[to_kill]=child[--child_alive];
 
 		/*KILL CHILD*/
 		dprintf(1, "KILL (alive %d /%d): n=%d PID=%d\n", child_alive, child_num, to_kill, pid_to_kill);
@@ -119,12 +119,14 @@ void handler_custom(int signum)
 
 void exit_everything(const char * exit_msg)
 {
+	/*KILL AND WAIT CHILD*/
+	int i;
 	dprintf(1, "%s\n", exit_msg);
-
-	for (int i = 0; i < child_alive; i++)
+	for (i = 0; i < child_alive; i++)
 		kill(child[i], SIGTERM);
 	while(wait(NULL)!=-1);
 
+	/*FREE RESOURCES*/
 	free(child);
 	exit(1);
 }

@@ -4,38 +4,41 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
+
+#define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
+#define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 
 void handler(int);
 
 int main(int argc, char **argv){
+	/*DECLARATION*/
+	struct sigaction sighandler;
+	int max_number, guess_number, guess_time, v;
+
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
-	if(argc<3){
-		printf("ERROR: not enougth parameters\n");
-		return 1;
-	}
-	srand(time(0));
-	int max_number=atoi(argv[1]);
-	int time=atoi(argv[2]);
-	if(time<=0 || max_number<=0){
-		printf("ERROR: negative or null parameter/s\n");
-		return 1;
-	}
+	if(argc<3)
+		PANIC("not enougth parameters");
+	srand(time(NULL));
+	max_number=atoi(argv[1]);
+	guess_time=atoi(argv[2]);
+	if(guess_time<=0 || max_number<=0)
+		PANIC("negative or null parameter/s");
 
 	/*SELECT A NUMBER RANDOM*/
-	int guess_number = rand() % (max_number + 1);
+	guess_number = rand() % (max_number + 1);
 
 	/*SETUP HANDLER*/
-	struct sigaction sighandler;
 	bzero(&sighandler, sizeof(sighandler));
 	sighandler.sa_handler = &handler;
 	sigaction(SIGALRM, &sighandler, NULL);
 
 	/*START TIMER*/
-	alarm(time);
+	alarm(guess_time);
 
 	/*GAME*/
 	printf("Insert a guess: ");
-	int v=-1;
+	v=-1;
 	while (v!=guess_number){
 		scanf("%d", &v);
 		if(v>guess_number)
@@ -50,10 +53,11 @@ int main(int argc, char **argv){
 }
 
 void handler(int signum){
-	if(signum==SIGALRM){
-		char c[] = "\n\nYou lose\n\n";
-		write(1, c, sizeof(c));
-		exit(0);
-	}
+	const char str[] = "\n\nYou lose\n\n";
 
+	if(signum!=SIGALRM)
+		return;
+
+	write(1, str, sizeof(str));
+	exit(0);
 }
