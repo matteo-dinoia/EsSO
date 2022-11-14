@@ -7,44 +7,45 @@
 #include <time.h>
 #include <errno.h>
 
-void custom_handler(int);
+#define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
+#define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 
+void custom_handler(int);
 int num_alive, *child;
 
 int main(int argc, char **argv){
+	/*DECLARATION*/
+	struct sigaction handler;
+	int i, t, num_child, pid;
+	int status, statuses_sum, counter, str_max=num_child;
+	char *str_statuses;
+	char *const arg[]={"char-loop", "Hello", NULL};
+	char *const env[]={NULL};
+
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
-	if(argc<2){
-		dprintf(1, "ERROR: not enougth parameters\n");
-		return 1;
-	}
-	int num_child=atoi(argv[1]);
-	if(num_child<=0){
-		dprintf(1, "ERROR: negative or null parameter/s\n");
-		return 1;
-	}
+	if(argc<2)
+		PANIC("not enougth parameters");
+	num_child=atoi(argv[1]);
+	if(num_child<=0)
+		PANIC("negative or null parameter/s");
 
 	/*SET SIGACTION*/
-	struct sigaction handler;
 	bzero(&handler, sizeof(handler));
 	handler.sa_handler=&custom_handler;
 	sigaction(SIGALRM, &handler, NULL);
 
 	/*CREATE CHILD*/
-	int pid;
+	pid;
 	child=calloc(num_child, sizeof(*child));
-	for(int i=0; i<num_child; i++){
+	for(i=0; i<num_child; i++){
 		if((pid=fork())==0){/*CHILD*/
 			free(child);
-			char *const argv[]={"char-loop", "Hello", NULL};
-			char *const env[]={NULL};
-			execve("char-loop", argv, env);
-			dprintf(1, "ERROR: executing execve\n");
-			exit(2);
+			execve("char-loop", arg, env);
+			/*if execve return it mean it failed*/
+			PANIC("executing execve");
 		}
-		else if(pid==-1){
-			dprintf(1, "ERROR: during forking child\n");
-			exit(1);
-		}
+		else if(pid==-1)
+			PANIC("during forking child");
 		child[i]=pid;
 	}
 
@@ -54,8 +55,9 @@ int main(int argc, char **argv){
 	alarm(1);
 
 	/*GET SIGNAL*/
-	int status, statuses_sum=0, counter=0, str_max=num_child;
-	char *str_statuses=calloc(num_child+1, sizeof(*str_statuses)); /*create string of statuses setted to 0*/
+	statuses_sum=0;
+	counter=0;
+	str_statuses=calloc(num_child+1, sizeof(*str_statuses)); /*create string of statuses setted to 0*/
 	while(wait(&status)!=-1 || errno==EINTR){
 		if(errno==EINTR){/*wait failed*/
 			errno=EXIT_SUCCESS;
@@ -63,7 +65,7 @@ int main(int argc, char **argv){
 		}
 
 		/*PRINT RETURN STATUS*/
-		int t=WEXITSTATUS(status);
+		t=WEXITSTATUS(status);
 		statuses_sum=(statuses_sum+t)%256;
 		if(t==0){ /*Avoiding string closure*/
 			dprintf(1, "CHILD TERMINATED with status 0\n");
@@ -73,9 +75,9 @@ int main(int argc, char **argv){
 			if(counter>=str_max){
 				str_max=str_max*2;
 				str_statuses=realloc(str_statuses, str_max);
-				if (str_statuses == NULL){  /*your realloc didn't work*/
-					dprintf(1, "ERROR wih memory managment");
-				}
+				if (str_statuses == NULL)  /*your realloc didn't work*/
+					PANIC("error during realloc");
+
 			}
 			str_statuses[counter++]=(char) t;
 			str_statuses[counter]='\0';
@@ -88,16 +90,12 @@ int main(int argc, char **argv){
 
 		/*CREATE NEW SON*/
 		if((pid=fork())==0){/*CHILD*/
-			char *const argv[]={"char-loop", "Hello", NULL};
-			char *const env[]={NULL};
-			execve("char-loop", argv, env);
-			dprintf(1, "ERROR: executing execve\n");
-			exit(2);
+			execve("char-loop", arg, env);
+			/*if execve return it mean it failed*/
+			PANIC("executing execve");
 		}
-		else if(pid==-1){
-			dprintf(1, "ERROR: during forking child\n");
-			exit(1);
-		}
+		else if(pid==-1)
+			PANIC("during forking child");
 		child[num_alive++]=pid;
 
 		/*SET ALARM*/
@@ -105,9 +103,8 @@ int main(int argc, char **argv){
 	}
 
 	/*KILLING AND CLOSING ALL PROCESS*/
-	for(int i=0; i<num_alive; i++){
+	for(i=0; i<num_alive; i++)
 		kill(child[i], SIGINT);
-	}
 	while(wait(&status)!=-1){}
 
 	/*FREE*/
@@ -118,12 +115,15 @@ int main(int argc, char **argv){
 }
 
 void custom_handler(int signal){
+	/*DECLARATION*/
+	int to_kill, pid_to_kill;
+
 	if(signal!=SIGALRM)
 		return;
 
 	/*DECIDE WHICH TO KILL*/
-	int to_kill=rand()%num_alive;
-	int pid_to_kill=child[to_kill];
+	to_kill=rand()%num_alive;
+	pid_to_kill=child[to_kill];
 
 	/*REORGANIZE DATA STRUCTURE*/
 	child[to_kill]=child[--num_alive]; /*put last in place of killed*/

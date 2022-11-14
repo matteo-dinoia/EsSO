@@ -7,31 +7,33 @@
 #include <sys/wait.h>
 #include <limits.h>
 
-#define PANIC(string) exit((dprintf(1, "FATAL: %s\n", (string)), 1))
+#define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
+#define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 #define READ 0
 #define WRITE 1
 
 
 int main(int argc, char **argv){
-	/*ARGUMENT CHECK AND OBTAIN VALUES*/
+	/*DECLARATION*/
 	int num_child, initial_value;
 	int pid, initialFd[2], oldFd[2], fd[2];
 	int p_write=-1, p_read=-1, i;
 
+	/*ARGUMENT CHECK AND OBTAIN VALUES*/
 	if(argc<3)
-		PANIC("not enougth parameters\n");
+		PANIC("not enougth parameters");
 	num_child=atoi(argv[1]);
 	initial_value=atoi(argv[2]);
 	if(num_child<=1 || initial_value<=0 )
-		PANIC("negative or null parameter/s (also num_child must be greater than 1)\n");
+		PANIC("negative or null parameter/s (also num_child must be greater than 1)");
 
 
 	/*CREATE CHILD*/
 	for(i=0; i<num_child; i++){
 		/*MEMORY MANAGMENT*/
 		if(i==0){ /*first*/
-			if(pipe(initialFd)==-1) PANIC("failed pipe\n");
-			if(pipe(fd)==-1) PANIC("failed pipe\n");
+			if(pipe(initialFd)==-1) PANIC("failed pipe");
+			if(pipe(fd)==-1) PANIC("failed pipe");
 			p_write=initialFd[WRITE];
 			p_read=initialFd[READ];
 			memcpy(oldFd, initialFd, 2*sizeof(int));
@@ -42,7 +44,7 @@ int main(int argc, char **argv){
 		}
 		else{ /*middle*/
 			memcpy(oldFd, fd, 2*sizeof(int));
-			if(pipe(fd)==-1) PANIC("failed pipe\n");
+			if(pipe(fd)==-1) PANIC("failed pipe");
 		}
 
 		/*FORK*/
@@ -61,7 +63,7 @@ int main(int argc, char **argv){
 			break;
 		}
 		else if(pid==-1) /*error*/
-			PANIC("during forking child\n");
+			PANIC("during forking child");
 		else{/*father*/
 			if(i!=0){
 				close(oldFd[READ]);
