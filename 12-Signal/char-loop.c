@@ -7,7 +7,7 @@
 #define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
 #define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
 
-#define KEEP_IN_LIMITS(i, min, max)  (i)>(max) ? (min) : (i)
+#define KEEP_IN_LIMITS(i, min, max)  ( (i) % ((max)-(min)) + (min) )
 void handler(int);
 int i;
 
@@ -26,10 +26,10 @@ int main(int argc, char **argv){
 	sigaction(SIGINT, &sighandler, NULL);
 
 	/*INFINITE LOOP*/
-	for(;; KEEP_IN_LIMITS(++i, 33, 126));
+	for(;; i=KEEP_IN_LIMITS(i+1, 33, 126));
 }
 
 void handler(int signum){
 	if(signum==SIGINT)
-		exit(KEEP_IN_LIMITS(i, 33, 126));
+		exit(i);
 }
