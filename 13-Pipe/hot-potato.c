@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <limits.h>
+#include <time.h>
 
 #define PANIC_NUM(string, num) exit((dprintf(1, "FATAL (line: %d): %s [%d]\n", __LINE__, (string), (num)), 1))
 #define PANIC(string) exit((dprintf(1, "FATAL (line: %d): %s\n", __LINE__, (string)), 1))
@@ -18,6 +19,7 @@ int main(int argc, char **argv){
 	int num_child, initial_value;
 	int pid, initialFd[2], oldFd[2], fd[2];
 	int p_write=-1, p_read=-1, i;
+	srand(time(0));
 
 	/*ARGUMENT CHECK AND OBTAIN VALUES*/
 	if(argc<3)
@@ -94,6 +96,7 @@ int main(int argc, char **argv){
 	}
 	else{ /*FATHER*/
 		/*WRITE*/
+		initial_value=rand()%initial_value+1;
 		write(p_write, &initial_value, sizeof(int));
 		dprintf(1, "WROTE %d (father)\n", initial_value);
 
