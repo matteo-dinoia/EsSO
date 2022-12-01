@@ -19,5 +19,5 @@ int main()
 	//RESULT
 	res=(*value & mask);
 	res=res>>52;
-	printf("%03X\n", res);
+	printf("Hexadecimal Value (not removed 1023): %03X\nExponent: %d\n", res, res-(1024-1));
 }
